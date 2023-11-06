@@ -3,6 +3,8 @@
 set -e
 
 password='jetson'
+username=$(id -un)
+group=$(id -gn)
 
 # Record the time this script starts
 date
@@ -24,9 +26,7 @@ sudo -H pip3 install --upgrade pip
 echo "\e[100m Install jtop \e[0m"
 sudo -H pip3 install jetson-stats 
 
-
-
-# Install the pre-built PyTorch pip wheel 
+# Install the pre-built PyTorch pip wheel
 echo "\e[45m Install the pre-built PyTorch pip wheel  \e[0m"
 cd
 wget -N https://nvidia.box.com/shared/static/9eptse6jyly1ggt9axbja2yrmj6pbarc.whl -O torch-1.6.0-cp36-cp36m-linux_aarch64.whl 
@@ -50,17 +50,23 @@ echo "\e[45m Install dependencies for pytorch-ssd \e[0m"
 sudo -H pip3 install --verbose --upgrade Cython && \
 sudo -H pip3 install --verbose boto3 pandas
 
-
-
 # Install the pre-built TensorFlow pip wheel
 echo "\e[48;5;202m Install the pre-built TensorFlow pip wheel \e[0m"
 sudo apt-get update
 sudo apt-get install -y libhdf5-serial-dev hdf5-tools libhdf5-dev zlib1g-dev zip libjpeg8-dev liblapack-dev libblas-dev gfortran
-
 sudo apt-get install -y python3-pip
-sudo -H pip3 install -U pip testresources setuptools==49.6.0 
-sudo -H pip3 install -U numpy==1.19.4 future==0.18.2 mock==3.0.5 h5py==2.10.0 keras_preprocessing==1.1.1 keras_applications==1.0.8 gast==0.2.2 futures protobuf pybind11
-sudo -H pip3 install --pre --extra-index-url https://developer.download.nvidia.com/compute/redist/jp/v45  'tensorflow<2'
+sudo -H pip3 install -U pip testresources setuptools
+sudo ln -s /usr/include/locale.h /usr/include/xlocale.h
+sudo -H pip3 install -U Cython==0.29.36
+sudo -H pip3 install pkgconfig
+cd
+git clone https://github.com/h5py/h5py.git
+cd h5py
+git checkout 3.1.0
+git cherry-pick 3bf862daa4ebeb2eeaf3a0491e05f5415c1818e4
+H5PY_SETUP_REQUIRES=0 pip3 install . --no-deps --no-build-isolation
+sudo pip3 install -U numpy==1.19.4 future mock keras_preprocessing keras_applications gast==0.2.1 protobuf pybind11 packaging
+sudo pip3 install --extra-index-url https://developer.download.nvidia.com/compute/redist/jp/v461 tensorflow
 
 # Install TensorFlow models repository
 echo "\e[48;5;202m Install TensorFlow models repository \e[0m"
@@ -80,11 +86,8 @@ if [ ! -d "$tf_models_dir" ] ; then
 	sudo -H python3 setup.py install
 fi
 
-
-
 # Install traitlets (master, to support the unlink() method)
 echo "\e[48;5;172m Install traitlets \e[0m"
-#sudo -H python3 -m pip install git+https://github.com/ipython/traitlets@master
 sudo -H python3 -m pip install git+https://github.com/ipython/traitlets@dead2b8cdde5913572254cf6dc70b5a6065b86f8
 
 # Install JupyterLab (lock to 2.2.6, latest as of Sept 2020)
@@ -97,7 +100,6 @@ sudo -H jupyter labextension install @jupyter-widgets/jupyterlab-manager
 jupyter lab --generate-config
 python3 -c "from notebook.auth.security import set_password; set_password('$password', '$HOME/.jupyter/jupyter_notebook_config.json')"
 
-
 # Install jupyter_clickable_image_widget
 echo "\e[42m Install jupyter_clickable_image_widget \e[0m"
 cd
@@ -109,14 +111,13 @@ sudo -H jupyter labextension install js
 sudo -H jupyter lab build
 
 # fix for permission error
-sudo chown -R jetson:jetson /usr/local/share/jupyter/lab/settings/build_config.json
+sudo chown -R $username:$group /usr/local/share/jupyter/lab/settings/build_config.json
 
 # install version of traitlets with dlink.link() feature
 # (added after 4.3.3 and commits after the one below only support Python 3.7+) 
 #
 sudo -H python3 -m pip install git+https://github.com/ipython/traitlets@dead2b8cdde5913572254cf6dc70b5a6065b86f8
 sudo -H jupyter lab build
-
 
 # =================
 # INSTALL jetcam
@@ -156,7 +157,6 @@ sudo -H pip3 install -U scikit-learn
 sudo -H pip3 install tensorboard
 sudo -H pip3 install segmentation-models-pytorch
 
-
 # Install jetcard
 echo "\e[44m Install jetcard \e[0m"
 cd $DIR
@@ -192,16 +192,11 @@ else
 	echo "Swapfile already exists"
 fi
 
-
-
 # Install remaining dependencies for projects
 echo "\e[104m Install remaining dependencies for projects \e[0m"
 sudo apt-get install python-setuptools
-
-
 
 echo "\e[42m All done! \e[0m"
 
 #record the time this script ends
 date
-
